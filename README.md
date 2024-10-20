@@ -79,7 +79,7 @@ type Secp256k1Signature = { b256, b256, int };
   ```pint
 type Secp256k1PublicKey = { b256, int };
   ```
-
+```
 ## Usage
 
 ### Providing Liquidity
