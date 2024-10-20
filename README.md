@@ -68,18 +68,19 @@ The contract includes several macros to simplify common patterns and ensure cons
 ### Types
 
 - **PredicateAddress**: A structure containing the contract address and the predicate address.
-  ```pint
+
+```pint
 type PredicateAddress = { contract: b256, addr: b256 };
-  ```
-- **Secp256k1Signature**: A structure representing a Secp256k1 signature.
-  ```pint
-type Secp256k1Signature = { b256, b256, int };
-  ```
-- **Secp256k1PublicKey**: A structure representing a Secp256k1 public key.
-  ```pint
-type Secp256k1PublicKey = { b256, int };
-  ```
 ```
+- **Secp256k1Signature**: A structure representing a Secp256k1 signature.
+```pint
+type Secp256k1Signature = { b256, b256, int };
+```
+- **Secp256k1PublicKey**: A structure representing a Secp256k1 public key.
+```pint
+type Secp256k1PublicKey = { b256, int };
+```
+
 ## Usage
 
 ### Providing Liquidity
