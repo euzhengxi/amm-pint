@@ -1,0 +1,169 @@
+use std::lib::PredicateAddress;
+use std::lib::@delta;
+use std::lib::@safe_increment;
+use std::lib::@init_once;
+use std::lib::@init_delta;
+use std::auth::@verify_key;
+use std::auth::@check_if_predicate_owns;
+use std::lib::Secp256k1Signature;
+
+storage {
+    token_a_balance: int,                   // Token A balance in the pool
+    token_b_balance: int,                   // Token B balance in the pool
+    total_liquidity: int,                   // Total liquidity shares
+    lp_balances: (b256 => int),             // LP tokens for users
+    fee_rate: int,                          // Fee rate (e.g., 30 for 0.3%)
+    accumulated_fees: int,                  // Accumulated fees for LPs
+    staked_balances: (b256 => int),         // Staked LP tokens for users
+    stake_start_time: (b256 => int),        // Time when staking started
+    rewards_pool: int,                      // Pool of rewards for liquidity providers
+    reward_rate: int,                       // Reward rate for staking
+    nonce: (b256 => int),                   // The nonce for each account
+}
+
+union LiquidityAuth = Signed(Secp256k1Signature) | Predicate(PredicateAddress);
+
+predicate ProvideLiquidity {
+    pub var user: b256;
+    pub var amount_a: int;
+    pub var amount_b: int;
+    var auth: LiquidityAuth;
+
+    state balance_a = mut storage::token_a_balance;
+    state balance_b = mut storage::token_b_balance;
+    state lp_balance = mut storage::lp_balances[user];
+    state total_liquidity = mut storage::total_liquidity;
+
+    // Ensure positive input amounts
+    constraint amount_a > 0;
+    constraint amount_b > 0;
+
+    // Update LP balances and total liquidity without intermediate variables
+    constraint @init_delta(lp_balance; 
+        ((total_liquidity * amount_a) / (balance_a == 0 ? 1 : balance_a) < (total_liquidity * amount_b) / (balance_b == 0 ? 1 : balance_b) ? 
+        (total_liquidity * amount_a) / (balance_a == 0 ? 1 : balance_a) : 
+        (total_liquidity * amount_b) / (balance_b == 0 ? 1 : balance_b))
+    );
+
+    constraint @init_delta(total_liquidity; 
+        ((total_liquidity * amount_a) / (balance_a == 0 ? 1 : balance_a) < (total_liquidity * amount_b) / (balance_b == 0 ? 1 : balance_b) ? 
+        (total_liquidity * amount_a) / (balance_a == 0 ? 1 : balance_a) : 
+        (total_liquidity * amount_b) / (balance_b == 0 ? 1 : balance_b))
+    );
+
+
+    // Update token balances
+    constraint @delta(balance_a) == amount_a;
+    constraint @delta(balance_b) == amount_b;
+
+    // Authorization check
+    constraint match auth {
+        LiquidityAuth::Signed(sig) => @verify_key({user, amount_a, amount_b}; sig; user),
+        LiquidityAuth::Predicate(addr) => @check_if_predicate_owns(addr; user),
+    };
+}
+
+predicate RemoveLiquidity {
+    pub var user: b256;
+    pub var lp_tokens: int;
+    var auth: LiquidityAuth;
+
+    state balance_a = mut storage::token_a_balance;
+    state balance_b = mut storage::token_b_balance;
+    state lp_balance = mut storage::lp_balances[user];
+    state total_liquidity = mut storage::total_liquidity;
+    state accumulated_fees = mut storage::accumulated_fees;
+
+    // Ensure sufficient LP tokens
+    constraint lp_balance >= lp_tokens;
+
+    // Distribute fees proportionally to liquidity providers
+    constraint @delta(accumulated_fees) == 0 - (lp_tokens * accumulated_fees) / total_liquidity;
+
+    // Update balances and liquidity
+    constraint @delta(balance_a) == 0 - (lp_tokens * balance_a) / (total_liquidity == 0 ? 1 : total_liquidity) + (lp_tokens * accumulated_fees) / total_liquidity;
+    constraint @delta(balance_b) == 0 - (lp_tokens * balance_b) / (total_liquidity == 0 ? 1 : total_liquidity);
+    constraint @delta(lp_balance) == 0 - lp_tokens;
+    constraint @delta(total_liquidity) == 0 - lp_tokens;
+
+    // Authorization check
+    constraint match auth {
+        LiquidityAuth::Signed(sig) => @verify_key({user, lp_tokens}; sig; user),
+        LiquidityAuth::Predicate(addr) => @check_if_predicate_owns(addr; user),
+    };
+}
+
+predicate SwapTokens {
+    pub var user: b256;
+    pub var from_token: int;        // 1 for Token A, 2 for Token B
+    pub var amount_in: int;
+    var auth: LiquidityAuth;
+
+    state balance_a = mut storage::token_a_balance;
+    state balance_b = mut storage::token_b_balance;
+    state fee_rate = storage::fee_rate;
+    state accumulated_fees = mut storage::accumulated_fees;
+
+    // Declare variables at the top
+    //var amount_out: int;
+
+    constraint amount_in > 0;
+
+    if (from_token == 1) {
+        // Define relationships via constraints
+        constraint balance_a' == balance_a + amount_in;
+        //constraint amount_out == (balance_b * amount_in * (1000 - fee_rate)) / (balance_a' * 1000);
+
+        constraint @delta(balance_a) == amount_in;
+        //constraint @delta(balance_b) == 0 - amount_out;
+        // Add fees to accumulated fees
+        constraint @delta(accumulated_fees) == (amount_in * fee_rate) / 1000;
+    } else if (from_token == 2) {
+        constraint balance_b' == balance_b + amount_in;
+        //constraint amount_out == (balance_a * amount_in * (1000 - fee_rate)) / (balance_b' * 1000);
+
+        constraint @delta(balance_b) == amount_in;
+        //constraint @delta(balance_a) == 0 - amount_out;
+        // Add fees to accumulated fees
+        constraint @delta(accumulated_fees) == (amount_in * fee_rate) / 1000;
+    }
+
+    // Authorization check
+    constraint match auth {
+        LiquidityAuth::Signed(sig) => @verify_key({user, from_token, amount_in}; sig; user),
+        LiquidityAuth::Predicate(addr) => @check_if_predicate_owns(addr; user),
+    };
+}
+
+predicate StakeLiquidity {
+    pub var user: b256;
+    pub var amount: int;
+    pub var current_time: int;  // Input the current block timestamp
+
+    state staked_balance = mut storage::staked_balances[user];
+    state stake_time = mut storage::stake_start_time[user];
+
+    // Add staking logic
+    constraint @delta(staked_balance) == amount;
+    constraint @init_once(stake_time; current_time);
+}
+
+predicate ClaimRewards {
+    pub var user: b256;
+    pub var current_time: int;  // Input the current block timestamp
+
+    state staked_balance = mut storage::staked_balances[user];
+    state stake_time = mut storage::stake_start_time[user];
+    state rewards_pool = mut storage::rewards_pool;
+    state balance_a = mut storage::token_a_balance;
+    state reward_rate = storage::reward_rate;
+
+    var staking_duration = current_time - stake_time;
+    var reward = (staked_balance * staking_duration * reward_rate);
+
+    // Ensure rewards are distributed
+    constraint @delta(rewards_pool) == 0 - reward;
+
+    // Add reward to the user's token balances
+    constraint @delta(balance_a) == reward;
+}
