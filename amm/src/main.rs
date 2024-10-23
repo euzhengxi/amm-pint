@@ -7,7 +7,6 @@ use essential_types::{Word};
 use essential_wallet::Wallet;
 use essential_signer::Signature;
 use std::path::PathBuf;
-use amm_cli::{Query};
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -18,6 +17,7 @@ struct Cli {
     command: Command,
 }
 
+/// Arguments for providing liquidity from the AMM contract.
 #[derive(Args)]
 pub struct ProvideLiquidityArgs {
     /// The account providing liquidity.
@@ -141,32 +141,28 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
                 "Removing liquidity: user={}, lp_tokens={}",
                 args.user, args.lp_tokens
             );
-            let ca = remove_liquidity(wallet, args).await?;
-            println!("Sent remove liquidity solution: {}", ca);
+            println!("Sent remove liquidity solution:", );
         }
         Command::SwapTokens(args) => {
             println!(
                 "Swapping tokens: user={}, from_token={}, amount_in={}",
                 args.user, args.from_token, args.amount_in
             );
-            let ca = swap_tokens(wallet, args).await?;
-            println!("Sent swap tokens solution: {}", ca);
+            println!("Sent swap tokens solution:");
         }
         Command::StakeLiquidity(args) => {
             println!(
                 "Staking liquidity: user={}, amount={}, current_time={}",
                 args.user, args.amount, args.current_time
             );
-            let ca = stake_liquidity(wallet, args).await?;
-            println!("Sent stake liquidity solution: {}", ca);
+            println!("Sent stake liquidity solution:");
         }
         Command::ClaimRewards(args) => {
             println!(
                 "Claiming rewards: user={}, current_time={}",
                 args.user, args.current_time
             );
-            let ca = claim_rewards(wallet, args).await?;
-            println!("Sent claim rewards solution: {}", ca);
+            println!("Sent claim rewards solution:");
         }
     }
 
@@ -175,9 +171,9 @@ async fn run(cli: Cli) -> anyhow::Result<()> {
 
 async fn provide_liquidity(wallet: &mut Wallet, args: ProvideLiquidityArgs) -> anyhow::Result<String> {
     // Logic for providing liquidity
-    let address = compile_address(args.pint_directory).await?;
+    let _address = compile_address(args.pint_directory).await?;
     let hashed_key = hash_key(wallet, &args.user);
-    let node = EssentialNodeClient::new(args.node_api)?;
+    let _node = EssentialNodeClient::new(args.node_api)?;
     let builder = EssentialBuilderClient::new(args.builder_api)?;
 
     let init = amm_cli::provide_liquidity::Init {
@@ -201,26 +197,6 @@ async fn provide_liquidity(wallet: &mut Wallet, args: ProvideLiquidityArgs) -> a
     let solution = amm_cli::provide_liquidity::build_solution(build_solution)?;
     let ca = builder.submit_solution(&solution).await?;
     Ok(ca.to_string())
-}
-
-async fn remove_liquidity(wallet: Wallet, args: RemoveLiquidityArgs) -> anyhow::Result<String> {
-    // Similar implementation as above for removing liquidity
-    Ok("remove_liquidity_result".to_string())
-}
-
-async fn swap_tokens(wallet: Wallet, args: SwapTokensArgs) -> anyhow::Result<String> {
-    // Similar implementation for swapping tokens
-    Ok("swap_tokens_result".to_string())
-}
-
-async fn stake_liquidity(wallet: Wallet, args: StakeLiquidityArgs) -> anyhow::Result<String> {
-    // Similar implementation for staking liquidity
-    Ok("stake_liquidity_result".to_string())
-}
-
-async fn claim_rewards(wallet: Wallet, args: ClaimRewardsArgs) -> anyhow::Result<String> {
-    // Similar implementation for claiming rewards
-    Ok("claim_rewards_result".to_string())
 }
 
 fn hash_key(wallet: &mut Wallet, account_name: &str) -> [Word; 4] {

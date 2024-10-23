@@ -3,8 +3,6 @@ use essential_app_utils::inputs::Encode;
 use essential_sign::secp256k1::ecdsa::RecoverableSignature;
 use essential_types::{solution::{Solution, SolutionData}, Word};
 
-use crate::{Query, lp_balance_key};
-
 pub struct Init {
     pub hashed_key: [Word; 4],
     pub amount: Word,
@@ -46,7 +44,7 @@ pub fn build_solution(build: BuildSolution) -> anyhow::Result<Solution> {
         current_time,
     };
 
-    let signature = signature.encode();
+    let _signature = signature.encode();
 
     let mutations = crate::amm::storage::mutations()
         .staked_balances(|map| map.entry(hashed_key, amount))

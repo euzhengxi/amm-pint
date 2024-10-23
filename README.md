@@ -166,6 +166,20 @@ predicate ClaimRewards {
 - **Replay Protection**: The nonce storage variable can be used to prevent replay attacks by ensuring each transaction is unique.
 - **State Consistency**: Macros like `@init_once` and `@delta` help maintain consistent state transitions and prevent unintended modifications.
 
+## Testing
+To deploy smart contract to testnet:
+```bash
+essential-rest-client --node-address "https://bigbangblock.builders" --builder-address "https://bigbangblock.builders" deploy-contract "./out/debug/amm.json"
+```
+
+Do note that you will need to create a wallet via the essential wallet library
+
+To test out the command line function:
+Example:
+```bash
+cargo run -- provide-liquidity admin 10 10 "https://bigbangblock.builders" "https://bigbangblock.builders" "../pint"
+```
+
 ## Contributing
 
 ### Fork the Repository

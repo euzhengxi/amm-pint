@@ -3,8 +3,6 @@ use essential_app_utils::inputs::Encode;
 use essential_sign::secp256k1::ecdsa::RecoverableSignature;
 use essential_types::{solution::{Solution, SolutionData}, Word};
 
-use crate::{Query, lp_balance_key};
-
 pub struct Init {
     pub hashed_key: [Word; 4],
     pub lp_tokens: Word,

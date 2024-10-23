@@ -3,8 +3,6 @@ use essential_app_utils::inputs::Encode;
 use essential_sign::secp256k1::ecdsa::RecoverableSignature;
 use essential_types::{solution::{Solution, SolutionData}, Word};
 
-use crate::{Query, lp_balance_key};
-
 pub struct Init {
     pub hashed_key: [Word; 4],
     pub current_time: Word,
@@ -35,12 +33,12 @@ pub fn build_solution(build: BuildSolution) -> anyhow::Result<Solution> {
         signature,
     } = build;
 
-    let pub_vars = crate::amm::ClaimRewards::PubVars {
+    let _pub_vars = crate::amm::ClaimRewards::PubVars {
         user: hashed_key,
         current_time,
     };
 
-    let signature = signature.encode();
+    let _signature = signature.encode();
 
     let mutations = crate::amm::storage::mutations()
         .rewards_pool(-10) // Replace with actual reward calculation
